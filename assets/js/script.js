@@ -3,9 +3,11 @@ let tasks = {};
 let createTask = function(taskText, taskDate, taskList) {
   // create elements that make up a task item
   let taskLi = $("<li>").addClass("list-group-item");
+
   let taskSpan = $("<span>")
     .addClass("badge badge-primary badge-pill")
     .text(taskDate);
+
   let taskP = $("<p>")
     .addClass("m-1")
     .text(taskText);
@@ -13,6 +15,8 @@ let createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  // check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -80,6 +84,15 @@ $(".list-group").on("click","span",function(){
   // replaces the <span> element with the newly created textInput 
   $(this).replaceWith(dateInput);
 
+  // enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // when calendar is closed, force a "change" event on the 'dateInput'
+      $(this).trigger("change");
+    }
+  });
+
   // focuses on the dateInput so the user doesn't have to click it again to begin editing
   dateInput.trigger("focus");
 });
@@ -116,7 +129,7 @@ $(".list-group").on("blur", "textarea", function() {
 });
 
 // SAVE DATE - if "list-group" class and is a <textarea> perform this function when leaving focus
-$(".list-group").on("blur", "input[type='text']", function() {
+$(".list-group").on("change", "input[type='text']", function() {
   // get current text value
   let date = $(this)
     .val()
@@ -144,6 +157,9 @@ $(".list-group").on("blur", "input[type='text']", function() {
 
   // replace input with span element
   $(this).replaceWith(taskSpan);
+
+  // Pass task's <li> element into audtiTask() to check new date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 // modal was triggered
@@ -253,6 +269,32 @@ $("#trash").droppable({
     console.log("out");
   }
 });
+
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
+let auditTask = function(taskEl) {
+  // get date from task element
+  let date = $(taskEl)
+    .find("span")
+    .text()
+    .trim();
+
+  // convert to moment object at 5:00pm
+  let time = moment(date, "L")
+    .set("hour", 17);
+
+  // remove any old class from the element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  } else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
 
 // load tasks for the first time
 loadTasks();
